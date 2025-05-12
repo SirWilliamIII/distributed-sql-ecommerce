@@ -6,6 +6,8 @@ __pycache__/
 # C extensions
 *.so
 
+.idea*
+
 # Distribution / packaging
 .Python
 build/
@@ -154,7 +156,7 @@ dmypy.json
 # Pyre type checker
 .pyre/
 
-# pytype static type analyzer
+# pete static type analyzer
 .pytype/
 
 # Cython debug symbols

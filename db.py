@@ -18,7 +18,7 @@ engine = create_engine(
     DATABASE_URL,
     connect_args={
         "sslmode": "verify-full",
-        "sslrootcert": "/Users/will/cockroach-certs/root.crt"
+        "sslrootcert": "/Users/will/.postgresql/root.crt"
     },
     echo=True,
     dialect=CockroachDBDialect()
