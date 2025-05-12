@@ -1,6 +1,8 @@
 from sqlalchemy import Column, String, Integer, ForeignKey, DECIMAL, DateTime
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.ext.declarative import declarative_base
+from sqlalchemy.orm import relationship
+
 import uuid
 import datetime
 
@@ -13,6 +15,7 @@ class User(Base):
     email = Column(String, unique=True)
     region = Column(String)
     crdb_region = Column(String, nullable=False)
+    orders = relationship("Order", backref="user")
 
 class Product(Base):
     __tablename__ = 'products'
@@ -20,6 +23,7 @@ class Product(Base):
     name = Column(String)
     price = Column(DECIMAL)
     stock = Column(Integer)
+    orders = relationship("Order", backref="product")
 
 class Order(Base):
     __tablename__ = 'orders'

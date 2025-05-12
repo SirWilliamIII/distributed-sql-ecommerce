@@ -8,6 +8,7 @@ from patched_cockroach_dialect import CockroachDBDialect
 load_dotenv()
 
 DATABASE_URL = os.getenv("DATABASE_URL")
+SSL_ROOT_CERT = os.getenv("SSL_ROOT_PATH")
 
 if not DATABASE_URL:
     raise ValueError("Missing DATABASE_URL")
@@ -27,7 +28,7 @@ engine = create_engine(
     DATABASE_URL,
     connect_args={
         "sslmode": "verify-full",
-        "sslrootcert": "/Users/will/.postgresql/root.crt"
+        "sslrootcert": SSL_ROOT_CERT
     },
     echo=True,
     dialect=CockroachDBDialect()

@@ -2,6 +2,9 @@ from flask import Flask, request, jsonify
 from models import User, Product, Order
 from db import SessionLocal, get_gateway_region
 from flask_cors import CORS
+from sqlalchemy import func
+from sqlalchemy.orm import joinedload
+from collections import defaultdict
 import uuid
 
 app = Flask(__name__)
@@ -9,47 +12,84 @@ CORS(app, supports_credentials=True, resources={r"/*": {
     "origins": ["http://localhost:5173", "http://127.0.0.1:5173"]
 }})
 
+def validate_user_data(data):
+    if not all(key in data for key in ("name", "email", "region")):
+        raise ValueError("Missing required user fields")
+
+def validate_product_data(data):
+    if not all(key in data for key in ("name", "price", "stock")):
+        raise ValueError("Missing required product fields")
+
+def validate_order_data(data):
+    if not all(key in data for key in ("user_id", "product_id", "quantity")):
+        raise ValueError("Missing required order fields")
+
+@app.route("/stock-by-region", methods=["GET"])
+def stock_by_region():
+    with SessionLocal() as db:
+        users = db.query(User).options(joinedload(User.orders).joinedload(Order.product)).all()
+        region_stock = defaultdict(lambda: defaultdict(int))
+
+        for user in users:
+            for order in user.orders:
+                if order.product:
+                    region_stock[user.crdb_region][order.product.name] += order.quantity
+
+        result = [
+            {
+                "region": region,
+                "stock_by_product": dict(products)
+            }
+            for region, products in region_stock.items()
+        ]
+
+        return jsonify(result)
+
 @app.route("/users", methods=["GET"])
 def get_users():
-    db = SessionLocal()
-    users = db.query(User).all()
-    return jsonify([
-        {
-            "id": str(u.id),
-            "name": u.name,
-            "email": u.email,
-            "region": u.region,
-            "crdb_region": u.crdb_region
-        }
-        for u in users
-    ])
+    with SessionLocal() as db:
+        users = db.query(User).options(
+            joinedload(User.orders).joinedload(Order.product)
+        ).all()
+
+        user_data = []
+        for user in users:
+            product_names = [order.product.name for order in user.orders] if user.orders else []
+            user_data.append({
+                "id": str(user.id),
+                "name": user.name,
+                "email": user.email,
+                "region": user.region,
+                "crdb_region": user.crdb_region,
+                "products": product_names
+            })
+
+        return jsonify(user_data)
 
 @app.route("/create-user", methods=["POST"])
 def create_user():
     data = request.json
-    db = SessionLocal()
     try:
-        user = User(
-            id=uuid.uuid4(),
-            name=data["name"],
-            email=data["email"],
-            region=data["region"],
-            crdb_region=get_gateway_region()
-        )
-        db.add(user)
-        db.commit()
-        return jsonify({"message": "User created: " + str(user.id)}), 201
+        validate_user_data(data)
+        with SessionLocal() as db:
+            user = User(
+                id=uuid.uuid4(),
+                name=data["name"],
+                email=data["email"],
+                region=data["region"],
+                crdb_region=get_gateway_region()
+            )
+            db.add(user)
+            db.commit()
+            return jsonify({"message": "User created: " + str(user.id)}), 201
+    except ValueError as ve:
+        return jsonify({"error": str(ve)}), 400
     except Exception as e:
-        db.rollback()
         return jsonify({"error": str(e)}), 500
-    finally:
-        db.close()
-
 
 @app.route("/products", methods=["GET"])
 def get_products():
-    db = SessionLocal()
-    try:
+    with SessionLocal() as db:
         products = db.query(Product).all()
         return jsonify([
             {
@@ -60,56 +100,70 @@ def get_products():
             }
             for p in products
         ])
-    finally:
-        db.close()
-
 
 @app.route("/create-product", methods=["POST"])
 def create_product():
     data = request.json
-    db = SessionLocal()
     try:
-        product = Product(
-            name=data["name"],
-            price=data["price"],
-            stock=data["stock"]
-        )
-        db.add(product)
-        db.commit()
-        return jsonify({"id": str(product.id)})
+        validate_product_data(data)
+        with SessionLocal() as db:
+            product = Product(
+                name=data["name"],
+                price=data["price"],
+                stock=data["stock"]
+            )
+            db.add(product)
+            db.commit()
+            return jsonify({"id": str(product.id)})
+    except ValueError as ve:
+        return jsonify({"error": str(ve)}), 400
     except Exception as e:
-        db.rollback()
         return jsonify({"error": str(e)}), 500
-    finally:
-        db.close()
-
 
 @app.route("/place-order", methods=["POST"])
 def place_order():
     data = request.json
-    db = SessionLocal()
     try:
-        product = db.query(Product).filter(
-            Product.id == uuid.UUID(data["product_id"])).first()
-        if not product or product.stock < data["quantity"]:
-            return jsonify({"error": "Insufficient stock"}), 400
+        validate_order_data(data)
+        with SessionLocal() as db:
+            product = db.query(Product).filter(
+                Product.id == uuid.UUID(data["product_id"])).first()
+            if not product or product.stock < data["quantity"]:
+                return jsonify({"error": "Insufficient stock"}), 400
 
-        # Decrease stock
-        product.stock -= data["quantity"]
+            # Decrease stock
+            product.stock -= data["quantity"]
 
-        order = Order(
-            user_id=uuid.UUID(data["user_id"]),
-            product_id=uuid.UUID(data["product_id"]),
-            quantity=data["quantity"]
-        )
-        db.add(order)
-        db.commit()
-        return jsonify({"id": str(order.id)})
+            order = Order(
+                user_id=uuid.UUID(data["user_id"]),
+                product_id=uuid.UUID(data["product_id"]),
+                quantity=data["quantity"]
+            )
+            db.add(order)
+            db.commit()
+            return jsonify({"id": str(order.id)})
+    except ValueError as ve:
+        return jsonify({"error": str(ve)}), 400
     except Exception as e:
-        db.rollback()
         return jsonify({"error": str(e)}), 500
-    finally:
-        db.close()
+
+@app.route("/product-stock", methods=["GET"])
+def product_stock_by_region():
+    with SessionLocal() as db:
+        results = (
+            db.query(User.crdb_region, Product.name, func.sum(Order.quantity).label("total"))
+            .join(Order, User.id == Order.user_id)
+            .join(Product, Product.id == Order.product_id)
+            .group_by(User.crdb_region, Product.name)
+            .all()
+        )
+        data = {}
+        for region, product, total in results:
+            if region not in data:
+                data[region] = []
+            data[region].append({"product": product, "quantity": int(total)})
+
+        return jsonify(data)
 
 if __name__ == "__main__":
     app.run(host="127.0.0.1", port=5000, debug=True)
