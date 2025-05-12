@@ -12,6 +12,7 @@ class User(Base):
     name = Column(String)
     email = Column(String, unique=True)
     region = Column(String)
+    crdb_region = Column(String, nullable=False)
 
 class Product(Base):
     __tablename__ = 'products'
