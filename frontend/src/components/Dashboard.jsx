@@ -6,7 +6,15 @@ import {
   Geography,
   Marker,
 } from "react-simple-maps";
-import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer } from "recharts";
+
+import {
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  Tooltip,
+  ResponsiveContainer,
+} from "recharts";
 
 const geoUrl = "https://cdn.jsdelivr.net/npm/world-atlas@2/countries-110m.json";
 
@@ -14,14 +22,20 @@ export default function Dashboard() {
   const [users, setUsers] = useState([]);
   const [products, setProducts] = useState([]);
   const [regionCounts, setRegionCounts] = useState([]);
+  const [stockByRegion, setStockByRegion] = useState([]);
 
   useEffect(() => {
     const fetchData = async () => {
       try {
         const userRes = await axios.get("http://127.0.0.1:5000/users");
         const prodRes = await axios.get("http://127.0.0.1:5000/products");
+        const stockRes = await axios.get(
+          "http://127.0.0.1:5000/stock-by-region"
+        );
+
         setUsers(userRes.data);
         setProducts(prodRes.data);
+        setStockByRegion(stockRes.data);
 
         const counts = {};
         userRes.data.forEach((u) => {
@@ -45,6 +59,14 @@ export default function Dashboard() {
     "gcp-asia-southeast1": [103, 1],
   };
 
+  const getStockText = (region) => {
+    const match = stockByRegion.find((r) => r.region === region);
+    if (!match) return "";
+    return Object.entries(match.stock_by_product)
+      .map(([product, qty]) => `${product}: ${qty}`)
+      .join(" | ");
+  };
+
   return (
     <div className="p-4 text-white">
       <h1 className="text-3xl font-bold mb-4">🌍 Users by Region</h1>
@@ -54,18 +76,36 @@ export default function Dashboard() {
           <Geographies geography={geoUrl}>
             {({ geographies }) =>
               geographies.map((geo) => (
-                <Geography key={geo.rsmKey} geography={geo} fill="#2b2b2b" stroke="#444" />
+                <Geography
+                  key={geo.rsmKey}
+                  geography={geo}
+                  fill="#2b2b2b"
+                  stroke="#444"
+                />
               ))
             }
           </Geographies>
           {Object.entries(regionCoords).map(([region, [lng, lat]]) => {
-            const count = regionCounts.find((r) => r.region === region)?.count || 0;
+            const count =
+              regionCounts.find((r) => r.region === region)?.count || 0;
+            const stockLines = getStockText(region).split(" | ");
             return (
               <Marker key={region} coordinates={[lng, lat]}>
                 <circle r={6} fill="#61dafb" stroke="#fff" strokeWidth={1} />
                 <text textAnchor="middle" y={-10} fill="#fff" fontSize={10}>
                   {region} ({count})
                 </text>
+                {stockLines.map((line, i) => (
+                  <text
+                    key={i}
+                    textAnchor="middle"
+                    y={10 + i * 12}
+                    fill="#ccc"
+                    fontSize={9}
+                  >
+                    {line}
+                  </text>
+                ))}
               </Marker>
             );
           })}
@@ -73,7 +113,9 @@ export default function Dashboard() {
       </div>
 
       <div className="mt-10">
-        <h2 className="text-2xl font-semibold mb-2">📦 Product Stock by Region</h2>
+        <h2 className="text-2xl font-semibold mb-2">
+          📦 Product Stock by Region
+        </h2>
         <ResponsiveContainer width="100%" height={300}>
           <BarChart data={products}>
             <XAxis dataKey="name" stroke="#ccc" />

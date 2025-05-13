@@ -13,22 +13,28 @@ function UsersTable() {
   return (
     <div className="p-6">
       <h2 className="text-xl font-bold mb-4">Users by Region</h2>
-      <table className="w-full border-collapse border border-gray-300">
-        <thead>
-          <tr className="bg-gray-100">
-            <th className="p-2 border">Name</th>
-            <th className="p-2 border">Email</th>
-            <th className="p-2 border">Region</th>
-            <th className="p-2 border">CRDB Region</th>
+      <table className="table-auto w-full border-collapse text-left">
+        <thead className="bg-gray-700 text-white">
+          <tr>
+            <th className="p-3">Name</th>
+            <th className="p-3">Email</th>
+            <th className="p-3">Region</th>
+            <th className="p-3">CRDB Region</th>
+            <th className="p-3">Products</th>
           </tr>
         </thead>
-        <tbody>
-          {users.map(user => (
-            <tr key={user.id}>
-              <td className="p-2 border">{user.name}</td>
-              <td className="p-2 border">{user.email}</td>
-              <td className="p-2 border">{user.region}</td>
-              <td className="p-2 border font-mono">{user.crdb_region}</td>
+        <tbody className="text-gray-200">
+          {users.map((u) => (
+            <tr key={u.id} className="border-b border-gray-800 hover:bg-gray-800">
+              <td className="p-3">{u.name}</td>
+              <td className="p-3">{u.email}</td>
+              <td className="p-3">{u.region}</td>
+              <td className="p-3">{u.crdb_region}</td>
+              <td className="p-3">
+                {u.products && u.products.length > 0
+                  ? u.products.join(", ")
+                  : "—"}
+              </td>
             </tr>
           ))}
         </tbody>
