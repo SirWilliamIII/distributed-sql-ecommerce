@@ -11,35 +11,42 @@ function UsersTable() {
   }, []);
 
   return (
-    <div className="p-6">
-      <h2 className="text-xl font-bold mb-4">Users by Region</h2>
-      <table className="table-auto w-full border-collapse text-left">
-        <thead className="bg-gray-700 text-white">
-          <tr>
-            <th className="p-3">Name</th>
-            <th className="p-3">Email</th>
-            <th className="p-3">Region</th>
-            <th className="p-3">CRDB Region</th>
-            <th className="p-3">Products</th>
-          </tr>
-        </thead>
-        <tbody className="text-gray-200">
-          {users.map((u) => (
-            <tr key={u.id} className="border-b border-gray-800 hover:bg-gray-800">
-              <td className="p-3">{u.name}</td>
-              <td className="p-3">{u.email}</td>
-              <td className="p-3">{u.region}</td>
-              <td className="p-3">{u.crdb_region}</td>
-              <td className="p-3">
-                {u.products && u.products.length > 0
-                  ? u.products.join(", ")
-                  : "—"}
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-    </div>
+    <div className="p-6 overflow-x-auto bg-gray-900 rounded-2xl shadow-xl">
+      <h2 className="text-3xl font-bold mb-6 text-white tracking-tight">📊 Users by Region</h2>
+      <br />
+      <table className="min-w-full table-auto border-collapse text-left">
+      <thead className="bg-gradient-to-r from-indigo-600 to-purple-700 text-white">
+        <tr>
+          <th className="p-4 text-sm font-semibold uppercase tracking-wide">Name</th>
+          <th className="p-4 text-sm font-semibold uppercase tracking-wide">Email</th>
+          <th className="p-4 text-sm font-semibold uppercase tracking-wide">Region</th>
+          <th className="p-4 text-sm font-semibold uppercase tracking-wide">CRDB Region</th>
+          <th className="p-4 text-sm font-semibold uppercase tracking-wide">Products</th>
+        </tr>
+      </thead>
+      <tbody>
+      {users.map((u, index) => (
+        <tr
+          key={u.id}
+          className={`${
+            index % 2 === 0 ? "bg-gray-800" : "bg-gray-700"
+          } text-gray-100 hover:bg-gray-600 transition-colors duration-200`}
+        >
+          <td className="p-4 whitespace-nowrap">{u.name}</td>
+          <td className="p-4 whitespace-nowrap text-sm text-gray-300">{u.email}</td>
+          <td className="p-4 whitespace-nowrap">{u.region}</td>
+          <td className="p-4 whitespace-nowrap">{u.crdb_region}</td>
+          <td className="p-4">
+            {u.products && u.products.length > 0
+              ? u.products.join(", ")
+              : <span className="text-gray-500">—</span>}
+          </td>
+        </tr>
+      ))}
+      </tbody>
+    </table>
+  </div>
+
   );
 }
 

@@ -6,7 +6,6 @@ from sqlalchemy import func
 from sqlalchemy.orm import joinedload
 from collections import defaultdict
 import uuid
-import re
 
 
 app = Flask(__name__)
@@ -168,7 +167,7 @@ def product_stock_by_region():
             if region not in data:
                 data[region] = []
             data[region].append({"product": product, "quantity": int(total)})
-
+        
         return jsonify(data)
 
 if __name__ == "__main__":

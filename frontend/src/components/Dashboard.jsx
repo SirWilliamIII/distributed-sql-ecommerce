@@ -69,8 +69,6 @@ export default function Dashboard() {
 
   return (
     <div className="p-4 text-white">
-      <h1 className="text-3xl font-bold mb-4">🌍 Users by Region</h1>
-
       <div className="w-full h-96">
         <ComposableMap projectionConfig={{ scale: 200 }}>
           <Geographies geography={geoUrl}>
@@ -111,10 +109,10 @@ export default function Dashboard() {
           })}
         </ComposableMap>
       </div>
-
+          <br />
       <div className="mt-10">
         <h2 className="text-2xl font-semibold mb-2">
-          📦 Product Stock by Region
+          📦 Product Stock
         </h2>
         <ResponsiveContainer width="100%" height={300}>
           <BarChart data={products}>
