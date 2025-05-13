@@ -6,11 +6,17 @@ from sqlalchemy import func
 from sqlalchemy.orm import joinedload
 from collections import defaultdict
 import uuid
+import re
+
 
 app = Flask(__name__)
-CORS(app, supports_credentials=True, resources={r"/*": {
-    "origins": ["http://localhost:5173", "http://127.0.0.1:5173"]
-}})
+CORS(app,
+     supports_credentials=True,
+     origins="*",  # This is fine for testing, don't use * in production with credentials
+     allow_headers=["Content-Type", "Authorization"],
+     expose_headers=["Content-Type", "Authorization"],
+     methods=["GET", "POST", "OPTIONS"])
+
 
 def validate_user_data(data):
     if not all(key in data for key in ("name", "email", "region")):
