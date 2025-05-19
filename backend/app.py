@@ -1,77 +1,52 @@
 from flask import Flask, request, jsonify
+from flask_cors import CORS
 from models import User, Product, Order
 from db import SessionLocal, get_gateway_region
-from flask_cors import CORS
 from sqlalchemy import func
 from sqlalchemy.orm import joinedload
 from collections import defaultdict
 import uuid
 
-
 app = Flask(__name__)
 CORS(app,
      supports_credentials=True,
-     origins="*",  # This is fine for testing, don't use * in production with credentials
+     origins=["http://127.0.0.1:5173"],
      allow_headers=["Content-Type", "Authorization"],
      expose_headers=["Content-Type", "Authorization"],
      methods=["GET", "POST", "OPTIONS"])
 
-
+# --------------------- Validation --------------------- #
 def validate_user_data(data):
-    if not all(key in data for key in ("name", "email", "region")):
+    if not all(k in data for k in ("name", "email", "region")):
         raise ValueError("Missing required user fields")
 
 def validate_product_data(data):
-    if not all(key in data for key in ("name", "price", "stock")):
+    if not all(k in data for k in ("name", "price", "stock")):
         raise ValueError("Missing required product fields")
 
 def validate_order_data(data):
-    if not all(key in data for key in ("user_id", "product_id", "quantity")):
+    if not all(k in data for k in ("user_id", "product_id", "quantity")):
         raise ValueError("Missing required order fields")
 
-@app.route("/stock-by-region", methods=["GET"])
-def stock_by_region():
-    with SessionLocal() as db:
-        users = db.query(User).options(joinedload(User.orders).joinedload(Order.product)).all()
-        region_stock = defaultdict(lambda: defaultdict(int))
-
-        for user in users:
-            for order in user.orders:
-                if order.product:
-                    region_stock[user.crdb_region][order.product.name] += order.quantity
-
-        result = [
-            {
-                "region": region,
-                "stock_by_product": dict(products)
-            }
-            for region, products in region_stock.items()
-        ]
-
-        return jsonify(result)
+# --------------------- Routes --------------------- #
 
 @app.route("/users", methods=["GET"])
 def get_users():
     with SessionLocal() as db:
-        users = db.query(User).options(
-            joinedload(User.orders).joinedload(Order.product)
-        ).all()
+        users = db.query(User).options(joinedload(User.orders).joinedload(Order.product)).all()
+        return jsonify([
+            {
+                "id": str(u.id),
+                "name": u.name,
+                "email": u.email,
+                "region": u.region,
+                "crdb_region": u.crdb_region,
+                "products": [o.product.name for o in u.orders if o.product]
+            }
+            for u in users
+        ])
 
-        user_data = []
-        for user in users:
-            product_names = [order.product.name for order in user.orders] if user.orders else []
-            user_data.append({
-                "id": str(user.id),
-                "name": user.name,
-                "email": user.email,
-                "region": user.region,
-                "crdb_region": user.crdb_region,
-                "products": product_names
-            })
-
-        return jsonify(user_data)
-
-@app.route("/create-user", methods=["POST"])
+@app.route("/api/users", methods=["POST"])
 def create_user():
     data = request.json
     try:
@@ -86,7 +61,7 @@ def create_user():
             )
             db.add(user)
             db.commit()
-            return jsonify({"message": "User created: " + str(user.id)}), 201
+            return jsonify({"id": str(user.id), "crdb_region": user.crdb_region}), 201
     except ValueError as ve:
         return jsonify({"error": str(ve)}), 400
     except Exception as e:
@@ -97,16 +72,11 @@ def get_products():
     with SessionLocal() as db:
         products = db.query(Product).all()
         return jsonify([
-            {
-                "id": str(p.id),
-                "name": p.name,
-                "price": float(p.price),
-                "stock": p.stock
-            }
+            {"id": str(p.id), "name": p.name, "price": float(p.price), "stock": p.stock}
             for p in products
         ])
 
-@app.route("/create-product", methods=["POST"])
+@app.route("/api/products", methods=["POST"])
 def create_product():
     data = request.json
     try:
@@ -125,18 +95,16 @@ def create_product():
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
-@app.route("/place-order", methods=["POST"])
+@app.route("/api/orders", methods=["POST"])
 def place_order():
     data = request.json
     try:
         validate_order_data(data)
         with SessionLocal() as db:
-            product = db.query(Product).filter(
-                Product.id == uuid.UUID(data["product_id"])).first()
+            product = db.query(Product).filter(Product.id == uuid.UUID(data["product_id"])).first()
             if not product or product.stock < data["quantity"]:
                 return jsonify({"error": "Insufficient stock"}), 400
 
-            # Decrease stock
             product.stock -= data["quantity"]
 
             order = Order(
@@ -162,13 +130,26 @@ def product_stock_by_region():
             .group_by(User.crdb_region, Product.name)
             .all()
         )
-        data = {}
+        grouped = defaultdict(list)
         for region, product, total in results:
-            if region not in data:
-                data[region] = []
-            data[region].append({"product": product, "quantity": int(total)})
-        
-        return jsonify(data)
+            grouped[region].append({"product": product, "quantity": int(total)})
+        return jsonify(grouped)
 
+@app.route("/stock-by-region", methods=["GET"])
+def stock_by_region():
+    with SessionLocal() as db:
+        users = db.query(User).options(joinedload(User.orders).joinedload(Order.product)).all()
+        region_stock = defaultdict(lambda: defaultdict(int))
+        for user in users:
+            for order in user.orders:
+                if order.product:
+                    region_stock[user.crdb_region][order.product.name] += order.quantity
+        return jsonify([
+            {"region": region, "stock_by_product": dict(products)}
+            for region, products in region_stock.items()
+        ])
+
+# --------------------- Entry Point --------------------- #
 if __name__ == "__main__":
     app.run(host="127.0.0.1", port=5000, debug=True)
+

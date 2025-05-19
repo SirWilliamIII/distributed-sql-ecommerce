@@ -5,7 +5,7 @@ function UsersTable() {
   const [users, setUsers] = useState([]);
 
   useEffect(() => {
-    axios.get("http://127.0.0.1:5000/users")
+    axios.get("/users")
       .then(res => setUsers(res.data))
       .catch(err => console.error("Error fetching users:", err));
   }, []);

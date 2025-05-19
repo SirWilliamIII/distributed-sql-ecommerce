@@ -27,11 +27,9 @@ export default function Dashboard() {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const userRes = await axios.get("http://127.0.0.1:5000/users");
-        const prodRes = await axios.get("http://127.0.0.1:5000/products");
-        const stockRes = await axios.get(
-          "http://127.0.0.1:5000/stock-by-region"
-        );
+        const userRes = await axios.get("/users");
+        const prodRes = await axios.get("/products");
+        const stockRes = await axios.get("/stock-by-region");
 
         setUsers(userRes.data);
         setProducts(prodRes.data);
@@ -109,11 +107,9 @@ export default function Dashboard() {
           })}
         </ComposableMap>
       </div>
-          <br />
+      <br />
       <div className="mt-10">
-        <h2 className="text-2xl font-semibold mb-2">
-          📦 Product Stock
-        </h2>
+        <h2 className="text-2xl font-semibold mb-2">📦 Product Stock</h2>
         <ResponsiveContainer width="100%" height={300}>
           <BarChart data={products}>
             <XAxis dataKey="name" stroke="#ccc" />

@@ -10,7 +10,8 @@ function App() {
         🧾 Transaction Tracker
       </h2>
       <Dashboard />
-      <br /><br />
+      <br />
+      <br />
       <UsersTable />
     </div>
   );
